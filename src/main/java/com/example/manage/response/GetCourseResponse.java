@@ -18,7 +18,10 @@ import java.util.List;
 public class GetCourseResponse {
     private Long id;
     private String name;
-    private String description;
+    private String shortDescription;
+    private String detailDescription;
     private WeekDay weekDay;
     private List<Period> listPeriod;
+    private Long beginDate;
+    private Long endDate;
 }

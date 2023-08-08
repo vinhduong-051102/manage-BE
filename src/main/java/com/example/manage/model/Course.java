@@ -23,8 +23,17 @@ public class Course {
     @Column
     private String name;
 
-    @Column
-    private String description;
+    @Column(name = "short_description")
+    private String shortDescription;
+
+    @Column(name = "detail_description")
+    private String detailDescription;
+
+    @Column(name = "begin_date")
+    private Long beginDate;
+
+    @Column(name = "end_date")
+    private Long endDate;
 
     @ManyToMany
     @JoinTable(

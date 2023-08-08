@@ -131,6 +131,7 @@ public class AuthenticationService {
             .userId(user.getId())
             .role(user.getRole())
             .fullName(username)
+            .isActive(user.getIsActive())
         .build();
   }
 

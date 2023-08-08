@@ -5,7 +5,9 @@ import com.example.manage.exception.AddressRequiredException;
 import com.example.manage.exception.DuplicateContentException;
 import com.example.manage.exception.NameRequiredException;
 import com.example.manage.model.Student;
+import com.example.manage.request.CancelCourseRequest;
 import com.example.manage.request.CreateStudentRequest;
+import com.example.manage.request.EnrollCourseRequest;
 import com.example.manage.response.GetAllResponse;
 import com.example.manage.response.GetStudentResponse;
 import com.example.manage.service.DistrictService;
@@ -53,7 +55,7 @@ public class StudentApiController {
         Pageable pageable = PageRequest.of(page - 1, size);
         List<GetStudentResponse> list = new ArrayList<>();
         List<Student> studentList = studentService.getAllStudents(pageable).getContent();
-        for (Student s:
+        for (Student s :
                 studentList) {
             list.add(
                     GetStudentResponse
@@ -68,9 +70,9 @@ public class StudentApiController {
                             .email(s.getEmail())
                             .locationString(
                                     provinceService.findProvinceByCode(s.getProvinceCode()).getFullName()
-                                    + ", " + districtService.findDistrictByCode(s.getDistrictCode()).getFullName()
-                                    + ", " + wardService.findWardByCode(s.getWardCode()).getFullName()
-                                    + ", " + s.getAddress()
+                                            + ", " + districtService.findDistrictByCode(s.getDistrictCode()).getFullName()
+                                            + ", " + wardService.findWardByCode(s.getWardCode()).getFullName()
+                                            + ", " + s.getAddress()
                             )
                             .build()
             );
@@ -86,13 +88,13 @@ public class StudentApiController {
 
     @GetMapping("")
     public ResponseEntity<GetAllResponse<GetStudentResponse>> getListStudentByName(@RequestParam(name = "page") int page,
-                                                  @RequestParam(name = "size") int size,
-                                                  @RequestParam(name = "keySearch") String keySearch
+                                                                                   @RequestParam(name = "size") int size,
+                                                                                   @RequestParam(name = "keySearch") String keySearch
     ) {
         Pageable pageable = PageRequest.of(page - 1, size);
         List<GetStudentResponse> list = new ArrayList<>();
         List<Student> studentList = studentService.getStudentsByKeyword(keySearch, pageable).getContent();
-        for (Student s:
+        for (Student s :
                 studentList) {
             list.add(
                     GetStudentResponse
@@ -176,32 +178,45 @@ public class StudentApiController {
         }
     }
 
-//    @GetMapping("")
-//    public ResponseEntity<?> getListStudentByCourseId(@RequestParam(
-//            "courseId") Long id) {
-//        try {
-//            List<Student> studentList = studentService.getStudentsEnrollCourseId(id);
-//            return ResponseEntity.status(HttpStatus.OK).body(studentList);
-//        } catch (NumberFormatException e) {
-//            ErrorResponseDto errorResponse = new ErrorResponseDto(HttpStatus.BAD_REQUEST.value(), e.getMessage());
-//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-//        } catch (IllegalArgumentException e) {
-//            ErrorResponseDto errorResponse =
-//                    new ErrorResponseDto(HttpStatus.NOT_FOUND.value(), e.getMessage());
-//            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-//        } catch (Exception e) {
-//            ErrorResponseDto errorResponse = new ErrorResponseDto(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage());
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-//        }
-//    }
-
-    @PostMapping("/enroll")
-    public ResponseEntity<?> enrollCourse(@RequestParam("studentId") Long studentId,
-                                          @RequestParam("courseId") Long courseId) {
+    @GetMapping("/list")
+    public ResponseEntity<?> getListStudentByCourseId(@RequestParam(
+            "courseId") Long id, @RequestParam("page") int page, @RequestParam("size") int size) {
         try {
-            studentService.enrollCourse(studentId, courseId);
-            return ResponseEntity.status(HttpStatus.OK).body("Enroll " +
-                    "successfully");
+            Pageable pageable = PageRequest.of(page - 1, size);
+            List<GetStudentResponse> list = new ArrayList<>();
+            List<Student> studentList = studentService.getStudentsEnrollCourseId(id, pageable).getContent();
+            for (Student s :
+                    studentList) {
+                list.add(
+                        GetStudentResponse
+                                .builder()
+                                .address(s.getAddress())
+                                .id(s.getId())
+                                .name(s.getName())
+                                .isActive(s.getUser().getIsActive())
+                                .provinceCode(s.getProvinceCode())
+                                .districtCode(s.getDistrictCode())
+                                .wardCode(s.getWardCode())
+                                .email(s.getEmail())
+                                .locationString(
+                                        provinceService.findProvinceByCode(s.getProvinceCode()).getFullName()
+                                                + ", " + districtService.findDistrictByCode(s.getDistrictCode()).getFullName()
+                                                + ", " + wardService.findWardByCode(s.getWardCode()).getFullName()
+                                                + ", " + s.getAddress()
+                                )
+                                .build()
+                );
+            }
+            GetAllResponse<GetStudentResponse> response = GetAllResponse
+                    .<GetStudentResponse>builder()
+                    .data(list)
+                    .currentPage(pageable.getPageNumber() + 1)
+                    .pageSize(pageable.getPageSize())
+                    .totalRecord((long) studentService.getStudentsEnrollCourseId(id).size()).build();
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch (NumberFormatException e) {
+            ErrorResponseDto errorResponse = new ErrorResponseDto(HttpStatus.BAD_REQUEST.value(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         } catch (IllegalArgumentException e) {
             ErrorResponseDto errorResponse =
                     new ErrorResponseDto(HttpStatus.NOT_FOUND.value(), e.getMessage());
@@ -212,11 +227,17 @@ public class StudentApiController {
         }
     }
 
+    @PostMapping("/enroll")
+    public ResponseEntity<?> enrollCourse(@RequestBody EnrollCourseRequest request) {
+        studentService.enrollCourse(request.getUserId(), request.getListCourseId());
+        return ResponseEntity.status(HttpStatus.OK).body("Enroll " +
+                "successfully");
+    }
+
     @PostMapping("/cancel")
-    public ResponseEntity<?> cancelCourse(@RequestParam("studentId") Long studentId,
-                                          @RequestParam("courseId") Long courseId) {
+    public ResponseEntity<?> cancelCourse(@RequestBody CancelCourseRequest request) {
         try {
-            studentService.cancelCourse(studentId, courseId);
+            studentService.cancelCourse(request.getUserId(), request.getCourseId());
             return ResponseEntity.status(HttpStatus.OK).body("Cancel " +
                     "successfully");
         } catch (IllegalArgumentException e) {
@@ -228,12 +249,13 @@ public class StudentApiController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
+
     @GetMapping("/checkEmail")
     public ResponseEntity<Boolean> checkEmail(@RequestParam(name = "email") String email) {
         List<Student> studentList = studentService.getAllStudent();
-        for (Student s:
+        for (Student s :
                 studentList) {
-            if(Objects.equals(s.getEmail(), email)) {
+            if (Objects.equals(s.getEmail(), email)) {
                 return ResponseEntity.ok(false);
             }
         }

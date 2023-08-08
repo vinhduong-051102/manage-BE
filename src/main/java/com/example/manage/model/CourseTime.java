@@ -1,10 +1,9 @@
 package com.example.manage.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
 import java.util.Set;
 
 
@@ -27,6 +26,7 @@ public class CourseTime {
 
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "course_id")
+    @JsonIgnore
     private Course course;
 
 }

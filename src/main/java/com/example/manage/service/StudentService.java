@@ -23,10 +23,11 @@ public interface StudentService {
 
     Student getStudentById(Long id);
 
-    void enrollCourse(Long studentId, Long courseId);
+    void enrollCourse(Long studentId, List<Long> listCourseId);
 
-    void cancelCourse(Long studentId, Long courseId);
+    void cancelCourse(Long userId, Long courseId);
 
+    Page<Student> getStudentsEnrollCourseId(Long courseId, Pageable pageable);
     List<Student> getStudentsEnrollCourseId(Long courseId);
     Page<Student> getStudentsByKeyword(String keyword, Pageable pageable);
     List<Student> getStudentsByKeyword(String keyword);

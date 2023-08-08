@@ -1,7 +1,9 @@
 package com.example.manage.service.impl;
 
-import ch.qos.logback.core.testUtil.RandomUtil;
-import com.example.manage.exception.*;
+import com.example.manage.exception.AddressRequiredException;
+import com.example.manage.exception.DescriptionRequiredException;
+import com.example.manage.exception.NameRequiredException;
+import com.example.manage.exception.PageNumberToLargeException;
 import com.example.manage.model.*;
 import com.example.manage.repository.CourseRepository;
 import com.example.manage.repository.StudentCourseRepository;
@@ -15,14 +17,15 @@ import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +43,8 @@ public class StudentServiceImpl implements StudentService {
 
     private final PasswordEncoder passwordEncoder;
 
+    private final UserRepository userRepository;
+
     public Page<Student> getAllStudents(@NotNull Pageable pageable) {
         return studentRepository.findAll(pageable);
     }
@@ -50,10 +55,10 @@ public class StudentServiceImpl implements StudentService {
     }
 
     public Student createStudent(@NotNull CreateStudentRequest request) throws MessagingException {
-        if(request.getUsername().isEmpty()) {
+        if (request.getUsername().isEmpty()) {
             throw new NameRequiredException("Student name must have value");
         }
-        if(request.getAddress().isEmpty()) {
+        if (request.getAddress().isEmpty()) {
             throw new DescriptionRequiredException("Student address must have value");
         }
         Student student = studentRepository.save(
@@ -86,10 +91,10 @@ public class StudentServiceImpl implements StudentService {
     }
 
     public Student updateStudent(@NotNull Student student) {
-        if(student.getName().isEmpty()) {
+        if (student.getName().isEmpty()) {
             throw new NameRequiredException("Student name must have value");
         }
-        if(student.getAddress().isEmpty()) {
+        if (student.getAddress().isEmpty()) {
             throw new AddressRequiredException("Student address must have value");
         }
         Student s = studentRepository.findById(student.getId())
@@ -124,40 +129,48 @@ public class StudentServiceImpl implements StudentService {
         Optional<Student> student = studentRepository.findById(id);
         return student.orElseThrow(() -> new IllegalArgumentException(
                 "Student" +
-                " not " +
-                "found with ID: " + id));
+                        " not " +
+                        "found with ID: " + id));
     }
 
     @Override
-    public void enrollCourse(Long studentId, Long courseId) {
-        Student student = studentRepository.findById(studentId).orElse(null);
-        Course course = courseRepository.findById(courseId).orElse(null);
-        Optional<StudentCourse> studentCourse = studentCourseRepository.findEnrollCourse(studentId,
-                        courseId);
-        if(studentCourse.isPresent()) {
-            throw new IllegalArgumentException("This course is already " +
-                    "enrolled");
-        }
-        if (student == null || course == null) {
-            throw new IllegalArgumentException("User or course not found");
-        }
-        List<Course> studentCourses = student.getCourses();
-        studentCourses.add(course);
-        student.setCourses(studentCourses);
-        studentRepository.save(student);
+    public void enrollCourse(Long userId, List<Long> listCourseId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UsernameNotFoundException("User is not found with id"));
+        Student student = user.getStudent();
+        for (Long courseId :
+                listCourseId) {
 
-        List<Student> courseStudents = course.getStudents();
-        courseStudents.add(student);
-        course.setStudents(courseStudents);
-        courseRepository.save(course);
+            Course course = courseRepository.findById(courseId).orElse(null);
+            Optional<StudentCourse> studentCourse = studentCourseRepository.findEnrollCourse(student.getId(),
+                    courseId);
+            if (studentCourse.isPresent()) {
+                throw new IllegalArgumentException("This course is already " +
+                        "enrolled");
+            }
+            if (course == null) {
+                throw new IllegalArgumentException("Course is not found with id");
+            }
+            List<Course> studentCourses = student.getCourses();
+            studentCourses.add(course);
+            student.setCourses(studentCourses);
+            studentRepository.save(student);
+
+            List<Student> courseStudents = course.getStudents();
+            courseStudents.add(student);
+            course.setStudents(courseStudents);
+            courseRepository.save(course);
+        }
+
     }
 
     @Override
-    public void cancelCourse(Long studentId, Long courseId) {
-        Student student = studentRepository.findById(studentId).orElse(null);
+    public void cancelCourse(Long userId, Long courseId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new UsernameNotFoundException("User is not found with ID"));
+        Student student = user.getStudent();
+        Long studentId = student.getId();
         Course course = courseRepository.findById(courseId).orElse(null);
-        if (student == null || course == null) {
-            throw new IllegalArgumentException("User or course not found");
+        if (course == null) {
+            throw new IllegalArgumentException("Course is not found");
         }
         studentCourseRepository.findEnrollCourse(studentId, courseId).orElseThrow(() -> new IllegalArgumentException("This course is not enrolled"));
         List<Course> studentCourses = student.getCourses();
@@ -171,12 +184,21 @@ public class StudentServiceImpl implements StudentService {
         courseRepository.save(course);
 
     }
+
+    @Override
+    public Page<Student> getStudentsEnrollCourseId(Long courseId, Pageable pageable) {
+        courseRepository.findById(courseId).orElseThrow(() -> new IllegalArgumentException(
+                "Course not found with ID"));
+        return studentRepository.findStudentsEnrollCourseId(courseId, pageable);
+    }
+
     @Override
     public List<Student> getStudentsEnrollCourseId(Long courseId) {
         courseRepository.findById(courseId).orElseThrow(() -> new IllegalArgumentException(
                 "Course not found with ID"));
-        return studentRepository.findStudentsEnrollCourseId(courseId).orElse(new ArrayList<>());
+        return studentRepository.findStudentsEnrollCourseId(courseId);
     }
+
     @Override
     public Page<Student> getStudentsByKeyword(String keyword,
                                               @NotNull Pageable pageable) {
@@ -184,7 +206,7 @@ public class StudentServiceImpl implements StudentService {
         int totalStudent = students.size();
         int pageSize = pageable.getPageSize();
         int maxPages = (totalStudent + pageSize - 1) / pageSize;
-        if(maxPages < pageable.getPageNumber()) {
+        if (maxPages < pageable.getPageNumber()) {
             throw new PageNumberToLargeException("Page number to large, please select between 1 to " + maxPages);
         }
         return studentRepository.findByKeyword(keyword, pageable);

@@ -27,8 +27,11 @@ create table course
 (
     id          bigint auto_increment
         primary key,
-    description varchar(255) not null,
-    name        varchar(255) not null
+    short_description varchar(255) not null,
+    detail_description text,
+    name        varchar(255) not null,
+    begin_date bigint not null,
+    end_date bigint not null
 );
 
 CREATE TABLE course_time

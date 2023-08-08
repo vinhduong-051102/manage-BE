@@ -19,7 +19,11 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     @NotNull Optional<Student> findById(@NotNull Long id);
 
     @Query("SELECT s FROM Student s JOIN s.courses c WHERE c.id = :courseId")
-    Optional<List<Student>> findStudentsEnrollCourseId(@Param("courseId") Long courseId);
+    Page<Student> findStudentsEnrollCourseId(@Param("courseId") Long courseId, Pageable pageable);
+
+    @Query("SELECT s FROM Student s JOIN s.courses c WHERE c.id = :courseId")
+    List<Student> findStudentsEnrollCourseId(@Param("courseId") Long courseId);
+
     @Query(value = "SELECT * FROM Student WHERE name LIKE %:keyword%",
             nativeQuery = true)
     Page<Student> findByKeyword(@Param("keyword") String keyword,
@@ -28,5 +32,7 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     @Query(value = "SELECT * FROM Student WHERE name LIKE %:keyword%",
             nativeQuery = true)
     List<Student> findByKeyword(@Param("keyword") String keyword);
+
+    Optional<Student> findByEmail(String email);
 
 }

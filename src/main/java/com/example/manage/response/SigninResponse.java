@@ -20,4 +20,5 @@ public class SigninResponse {
     private ERole role;
     private String accessToken;
     private String refreshToken;
+    private Boolean isActive;
 }
